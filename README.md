@@ -1,4 +1,4 @@
-# mood_calculator
+# flutter_application
 
 A new Flutter project.
 

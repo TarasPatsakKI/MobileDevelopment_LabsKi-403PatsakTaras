@@ -5,6 +5,8 @@ class RoomCard extends StatelessWidget {
   final int lightsCount;
   final bool isOn;
   final VoidCallback onTap;
+  final VoidCallback? onEdit;
+  final VoidCallback? onDelete;
 
   const RoomCard({
     super.key,
@@ -12,6 +14,8 @@ class RoomCard extends StatelessWidget {
     required this.lightsCount,
     required this.isOn,
     required this.onTap,
+    this.onEdit,
+    this.onDelete,
   });
 
   @override
@@ -46,10 +50,56 @@ class RoomCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Icon(
-              Icons.lightbulb,
-              size: 40,
-              color: isOn ? Colors.white : Colors.grey.shade400,
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Icon(
+                  Icons.lightbulb,
+                  size: 40,
+                  color: isOn ? Colors.white : Colors.grey.shade400,
+                ),
+                if (onEdit != null || onDelete != null)
+                  PopupMenuButton<String>(
+                    icon: Icon(
+                      Icons.more_vert,
+                      color: isOn ? Colors.white : Colors.grey.shade600,
+                    ),
+                    onSelected: (value) {
+                      if (value == 'edit' && onEdit != null) {
+                        onEdit!();
+                      } else if (value == 'delete' && onDelete != null) {
+                        onDelete!();
+                      }
+                    },
+                    itemBuilder: (context) => [
+                      if (onEdit != null)
+                        const PopupMenuItem(
+                          value: 'edit',
+                          child: Row(
+                            children: [
+                              Icon(Icons.edit, size: 20),
+                              SizedBox(width: 8),
+                              Text('Edit'),
+                            ],
+                          ),
+                        ),
+                      if (onDelete != null)
+                        const PopupMenuItem(
+                          value: 'delete',
+                          child: Row(
+                            children: [
+                              Icon(Icons.delete, size: 20, color: Colors.red),
+                              SizedBox(width: 8),
+                              Text(
+                                'Delete',
+                                style: TextStyle(color: Colors.red),
+                              ),
+                            ],
+                          ),
+                        ),
+                    ],
+                  ),
+              ],
             ),
             const Spacer(),
             Text(
@@ -59,6 +109,8 @@ class RoomCard extends StatelessWidget {
                 fontWeight: FontWeight.bold,
                 color: isOn ? Colors.white : Colors.black87,
               ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
             ),
             const SizedBox(height: 4),
             Text(

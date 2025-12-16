@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../widgets/room_card.dart';
 import '../widgets/stats_card.dart';
 import '../domain/services/room_service.dart';
@@ -6,6 +7,7 @@ import '../domain/services/auth_service.dart';
 import '../data/repositories/room_repository_impl.dart';
 import '../data/repositories/user_repository_impl.dart';
 import '../data/models/room_model.dart';
+import '../providers/connectivity_provider.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -251,6 +253,13 @@ class _HomePageState extends State<HomePage> {
         ),
         actions: [
           IconButton(
+            icon: const Icon(Icons.sensors, color: Colors.black),
+            tooltip: 'IoT Sensors',
+            onPressed: () {
+              Navigator.pushNamed(context, '/sensors');
+            },
+          ),
+          IconButton(
             icon: const Icon(Icons.person, color: Colors.black),
             onPressed: () async {
               await Navigator.pushNamed(context, '/profile');
@@ -259,75 +268,106 @@ class _HomePageState extends State<HomePage> {
           ),
         ],
       ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : RefreshIndicator(
-              onRefresh: _loadData,
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.all(20),
-                physics: const AlwaysScrollableScrollPhysics(),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    StatsCard(
-                      activeLights: activeLights,
-                      totalLights: totalLights,
-                    ),
-                    const SizedBox(height: 32),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        const Text(
-                          'Rooms',
-                          style: TextStyle(
-                            fontSize: 20,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        IconButton(
-                          icon: const Icon(Icons.add_circle, size: 32),
-                          color: Theme.of(context).colorScheme.primary,
-                          onPressed: _showAddRoomDialog,
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 16),
-                    _rooms.isEmpty
-                        ? const Center(
-                            child: Padding(
-                              padding: EdgeInsets.all(40),
-                              child: Text(
-                                'No rooms yet. Add one to get started!',
-                              ),
-                            ),
-                          )
-                        : GridView.builder(
-                            shrinkWrap: true,
-                            physics: const NeverScrollableScrollPhysics(),
-                            gridDelegate:
-                                const SliverGridDelegateWithFixedCrossAxisCount(
-                                  crossAxisCount: 2,
-                                  crossAxisSpacing: 16,
-                                  mainAxisSpacing: 16,
-                                  childAspectRatio: 1,
-                                ),
-                            itemCount: _rooms.length,
-                            itemBuilder: (context, index) {
-                              final room = _rooms[index];
-                              return RoomCard(
-                                roomName: room.name,
-                                lightsCount: room.lightsCount,
-                                isOn: room.isOn,
-                                onTap: () => _toggleRoom(room.id),
-                                onEdit: () => _showEditRoomDialog(room),
-                                onDelete: () => _deleteRoom(room.id),
-                              );
-                            },
-                          ),
-                  ],
+      body: Consumer<ConnectivityProvider>(
+        builder: (context, connectivity, child) {
+          return Column(
+            children: [
+              // Offline banner
+              if (!connectivity.isConnected)
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(
+                    vertical: 8,
+                    horizontal: 16,
+                  ),
+                  color: Colors.orange,
+                  child: const Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.wifi_off, color: Colors.white, size: 18),
+                      SizedBox(width: 8),
+                      Text(
+                        'No Internet Connection - Limited functionality',
+                        style: TextStyle(color: Colors.white, fontSize: 12),
+                      ),
+                    ],
+                  ),
                 ),
+              Expanded(
+                child: _isLoading
+                    ? const Center(child: CircularProgressIndicator())
+                    : RefreshIndicator(
+                        onRefresh: _loadData,
+                        child: SingleChildScrollView(
+                          padding: const EdgeInsets.all(20),
+                          physics: const AlwaysScrollableScrollPhysics(),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              StatsCard(
+                                activeLights: activeLights,
+                                totalLights: totalLights,
+                              ),
+                              const SizedBox(height: 32),
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  const Text(
+                                    'Rooms',
+                                    style: TextStyle(
+                                      fontSize: 20,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                  IconButton(
+                                    icon: const Icon(Icons.add_circle, size: 32),
+                                    color: Theme.of(context).colorScheme.primary,
+                                    onPressed: _showAddRoomDialog,
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 16),
+                              _rooms.isEmpty
+                                  ? const Center(
+                                      child: Padding(
+                                        padding: EdgeInsets.all(40),
+                                        child: Text(
+                                          'No rooms yet. Add one to get started!',
+                                        ),
+                                      ),
+                                    )
+                                  : GridView.builder(
+                                      shrinkWrap: true,
+                                      physics: const NeverScrollableScrollPhysics(),
+                                      gridDelegate:
+                                          const SliverGridDelegateWithFixedCrossAxisCount(
+                                            crossAxisCount: 2,
+                                            crossAxisSpacing: 16,
+                                            mainAxisSpacing: 16,
+                                            childAspectRatio: 1,
+                                          ),
+                                      itemCount: _rooms.length,
+                                      itemBuilder: (context, index) {
+                                        final room = _rooms[index];
+                                        return RoomCard(
+                                          roomName: room.name,
+                                          lightsCount: room.lightsCount,
+                                          isOn: room.isOn,
+                                          onTap: () => _toggleRoom(room.id),
+                                          onEdit: () => _showEditRoomDialog(room),
+                                          onDelete: () => _deleteRoom(room.id),
+                                        );
+                                      },
+                                    ),
+                            ],
+                          ),
+                        ),
+                      ),
               ),
-            ),
+            ],
+          );
+        },
+      ),
     );
   }
 }

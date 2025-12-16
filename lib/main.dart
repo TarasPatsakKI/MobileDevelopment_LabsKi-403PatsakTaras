@@ -1,8 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'pages/login_page.dart';
 import 'pages/register_page.dart';
 import 'pages/home_page.dart';
 import 'pages/profile_page.dart';
+import 'pages/sensor_page.dart';
+import 'providers/connectivity_provider.dart';
+import 'providers/mqtt_provider.dart';
 
 void main() {
   runApp(const MyApp());
@@ -13,7 +17,12 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
+    return MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => ConnectivityProvider()),
+        ChangeNotifierProvider(create: (_) => MqttProvider()),
+      ],
+      child: MaterialApp(
       title: 'Smart Light Controller',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
@@ -29,8 +38,10 @@ class MyApp extends StatelessWidget {
         '/login': (context) => const LoginPage(),
         '/register': (context) => const RegisterPage(),
         '/home': (context) => const HomePage(),
+        '/sensors': (context) => const SensorPage(),
         '/profile': (context) => const ProfilePage(),
       },
+      ),
     );
   }
 }

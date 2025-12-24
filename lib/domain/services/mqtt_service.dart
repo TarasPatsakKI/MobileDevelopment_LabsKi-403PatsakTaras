@@ -26,13 +26,11 @@ class MqttService {
   }) async {
     final id = clientId ?? 'flutter_client_${DateTime.now().millisecondsSinceEpoch}';
 
-    // Use WebSocket for web, TCP for other platforms
     if (kIsWeb) {
-      // Use HiveMQ public WebSocket secure endpoint (port 8884)
       const webBroker = 'broker.hivemq.com';
       const wsUrl = 'wss://$webBroker/mqtt';
       final browserClient = MqttBrowserClient(wsUrl, id);
-      browserClient.port = 8884; // Explicitly set WSS port
+      browserClient.port = 8884; 
       browserClient.websocketProtocols = MqttClientConstants.protocolsSingleDefault;
       _client = browserClient;
     } else {

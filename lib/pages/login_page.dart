@@ -48,12 +48,19 @@ class _LoginPageState extends State<LoginPage> {
       _isCheckingAuth = false;
     });
 
+    // If user is already logged in — navigate to home regardless of connectivity.
     if (isLoggedIn && mounted) {
       if (!isConnected) {
-        // Auto-login without internet - show warning but allow access
+        // show warning but still allow access
         _showOfflineAutoLoginWarning();
       }
       Navigator.pushReplacementNamed(context, '/home');
+      return;
+    }
+
+    // If not logged in and offline, show offline warning (stay on login)
+    if (!isConnected) {
+      _showOfflineAutoLoginWarning();
     }
   }
 
@@ -76,7 +83,6 @@ class _LoginPageState extends State<LoginPage> {
       return;
     }
 
-    // Check internet connection before login
     final connectivityProvider = context.read<ConnectivityProvider>();
     final isConnected = await connectivityProvider.checkConnection();
 
@@ -132,7 +138,6 @@ class _LoginPageState extends State<LoginPage> {
           builder: (context, connectivity, child) {
             return Column(
               children: [
-                // Offline banner
                 if (!connectivity.isConnected)
                   Container(
                     width: double.infinity,

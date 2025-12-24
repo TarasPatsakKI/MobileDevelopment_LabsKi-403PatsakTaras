@@ -18,7 +18,6 @@ class MqttProvider extends ChangeNotifier {
   final List<SensorData> _sensorHistory = [];
   String _currentValue = '--';
   String _currentTopic = 'sensor/temperature';
-  // Default broker for both web and native (we set WSS port in service)
   String _broker = 'broker.hivemq.com';
   int _port = 1883;
 

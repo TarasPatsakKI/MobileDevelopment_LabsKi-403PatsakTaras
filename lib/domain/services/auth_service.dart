@@ -1,10 +1,15 @@
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+
 import '../../data/models/user_model.dart';
 import '../../data/repositories/user_repository.dart';
+import '../../core/api_client.dart';
 
 class AuthService {
   final UserRepository _userRepository;
+  final ApiClient? apiClient;
+  final FlutterSecureStorage _secureStorage = const FlutterSecureStorage();
 
-  AuthService(this._userRepository);
+  AuthService(this._userRepository, {this.apiClient});
 
   Future<AuthResult> register({
     required String fullName,
@@ -49,6 +54,26 @@ class AuthService {
         return AuthResult(success: false, message: 'Invalid email or password');
       }
 
+      // Try to obtain token from remote API if apiClient provided
+      if (apiClient != null) {
+        try {
+          final resp = await apiClient!.post('/auth/login', data: {
+            'email': email,
+            'password': password,
+          });
+
+          if (resp.statusCode == 200 && resp.data != null) {
+            final token = resp.data['token']?.toString();
+            if (token != null && token.isNotEmpty) {
+              await saveToken(token);
+              apiClient!.setToken(token);
+            }
+          }
+        } catch (_) {
+          // ignore api token errors, local login still works
+        }
+      }
+
       return AuthResult(success: true, message: 'Login successful', user: user);
     } catch (e) {
       return AuthResult(
@@ -68,10 +93,24 @@ class AuthService {
 
   Future<void> logout() async {
     await _userRepository.logout();
+    await clearToken();
+    apiClient?.clearToken();
   }
 
   Future<bool> isLoggedIn() async {
     return await _userRepository.isUserLoggedIn();
+  }
+
+  Future<void> saveToken(String token) async {
+    await _secureStorage.write(key: 'auth_token', value: token);
+  }
+
+  Future<String?> getToken() async {
+    return await _secureStorage.read(key: 'auth_token');
+  }
+
+  Future<void> clearToken() async {
+    await _secureStorage.delete(key: 'auth_token');
   }
 }
 

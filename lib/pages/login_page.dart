@@ -47,18 +47,15 @@ class _LoginPageState extends State<LoginPage> {
     setState(() {
       _isCheckingAuth = false;
     });
-
-    // If user is already logged in — navigate to home regardless of connectivity.
     if (isLoggedIn && mounted) {
       if (!isConnected) {
-        // show warning but still allow access
         _showOfflineAutoLoginWarning();
       }
       Navigator.pushReplacementNamed(context, '/home');
       return;
     }
 
-    // If not logged in and offline, show offline warning (stay on login)
+
     if (!isConnected) {
       _showOfflineAutoLoginWarning();
     }

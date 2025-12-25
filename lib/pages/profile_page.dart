@@ -5,6 +5,8 @@ import '../domain/services/auth_service.dart';
 import '../data/repositories/user_repository_impl.dart';
 import '../data/models/user_model.dart';
 import '../core/validators/input_validator.dart';
+import '../data/repositories/room_repository_impl.dart';
+import '../data/models/room_model.dart';
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
@@ -15,13 +17,17 @@ class ProfilePage extends StatefulWidget {
 
 class _ProfilePageState extends State<ProfilePage> {
   late final AuthService _authService;
+  late final RoomRepositoryImpl _roomRepo;
   UserModel? _currentUser;
   bool _isLoading = true;
+  late Future<List<RoomModel>> _roomsFuture;
 
   @override
   void initState() {
     super.initState();
     _authService = AuthService(UserRepositoryImpl());
+    _roomRepo = RoomRepositoryImpl();
+    _roomsFuture = _roomRepo.getAllRooms();
     _loadUserData();
   }
 
@@ -213,11 +219,61 @@ class _ProfilePageState extends State<ProfilePage> {
                     ],
                   ),
                   const SizedBox(height: 16),
-                  _buildInfoCard(context, 'Usage Statistics', Icons.bar_chart, [
-                    _buildStatRow('Total Lights', '15'),
-                    _buildStatRow('Active Today', '8 hours'),
-                    _buildStatRow('Energy Saved', '12%'),
-                  ]),
+                  _buildInfoCard(
+                    context,
+                    'Usage Statistics',
+                    Icons.bar_chart,
+                    [
+                      FutureBuilder<List<RoomModel>>(
+                        future: _roomsFuture,
+                        builder: (context, snapshot) {
+                          if (snapshot.connectionState == ConnectionState.waiting) {
+                            return const Center(child: SizedBox(height: 24, width: 24, child: CircularProgressIndicator(strokeWidth: 2)));
+                          }
+
+                          if (snapshot.hasError) {
+                            return _buildStatRow('Data', 'Offline');
+                          }
+
+                          final rooms = snapshot.data ?? [];
+                          final totalLights = rooms.fold<int>(0, (s, r) => s + r.lightsCount);
+                          final activeRooms = rooms.where((r) => r.isOn).length;
+                          final energySaved = rooms.isEmpty ? '—' : '${(rooms.where((r) => !r.isOn).length * 5) % 100}%';
+
+                          return Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              _buildStatRow('Total Lights', totalLights.toString()),
+                              _buildStatRow('Active Rooms', activeRooms.toString()),
+                              _buildStatRow('Energy Saved', energySaved),
+                            ],
+                          );
+                        },
+                      ),
+                    ],
+                    headerAction: IconButton(
+                      tooltip: 'Refresh statistics',
+                      icon: const Icon(Icons.refresh),
+                      onPressed: () async {
+                        if (!mounted) return;
+                        final messenger = ScaffoldMessenger.of(context);
+                        messenger.showSnackBar(const SnackBar(content: Text('Refreshing...')));
+                        setState(() {
+                          _roomsFuture = _roomRepo.getAllRooms();
+                        });
+                        try {
+                          await _roomsFuture;
+                          if (mounted) {
+                            messenger.showSnackBar(const SnackBar(content: Text('Statistics updated'), backgroundColor: Colors.green));
+                          }
+                        } catch (_) {
+                          if (mounted) {
+                            messenger.showSnackBar(const SnackBar(content: Text('Failed to refresh'), backgroundColor: Colors.red));
+                          }
+                        }
+                      },
+                    ),
+                  ),
                   const SizedBox(height: 40),
                   CustomButton(
                     text: 'Edit Profile',
@@ -239,15 +295,16 @@ class _ProfilePageState extends State<ProfilePage> {
     BuildContext context,
     String title,
     IconData icon,
-    List<Widget> children,
-  ) {
+    List<Widget> children, {
+    Widget? headerAction,
+  }) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        boxShadow: [
+          boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 10,
@@ -262,13 +319,16 @@ class _ProfilePageState extends State<ProfilePage> {
             children: [
               Icon(icon, color: Theme.of(context).colorScheme.primary),
               const SizedBox(width: 12),
-              Text(
-                title,
-                style: const TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
+              Expanded(
+                child: Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ),
+              if (headerAction != null) headerAction,
             ],
           ),
           const SizedBox(height: 16),

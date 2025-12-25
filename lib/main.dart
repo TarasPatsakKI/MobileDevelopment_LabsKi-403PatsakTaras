@@ -31,7 +31,6 @@ class MyApp extends StatelessWidget {
           secondary: const Color(0xFF4CAF50),
         ),
         useMaterial3: true,
-        // Use platform default fonts (remove remote Roboto to avoid web fetch)
       ),
       initialRoute: '/login',
       routes: {

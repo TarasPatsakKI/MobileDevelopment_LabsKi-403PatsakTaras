@@ -1,79 +1,31 @@
 import 'dart:convert';
+
 import 'package:shared_preferences/shared_preferences.dart';
+
+import '../../core/api_client.dart';
 import '../models/room_model.dart';
-import '../repositories/room_repository.dart';
+import 'room_repository.dart';
 
 class RoomRepositoryImpl implements RoomRepository {
-  static const String _roomsKey = 'rooms';
+  final ApiClient? apiClient;
+  static const _cacheKey = 'rooms_cache';
 
-  @override
-  Future<List<RoomModel>> getAllRooms() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final roomsJson = prefs.getString(_roomsKey);
-
-      if (roomsJson == null) {
-        return _getDefaultRooms();
-      }
-
-      final List<Map<String, dynamic>> roomsList =
-          List<Map<String, dynamic>>.from(jsonDecode(roomsJson) as List);
-
-      return roomsList.map((json) => RoomModel.fromJson(json)).toList();
-    } catch (e) {
-      return _getDefaultRooms();
-    }
-  }
-
-  @override
-  Future<RoomModel?> getRoomById(String id) async {
-    try {
-      final rooms = await getAllRooms();
-      return rooms.firstWhere(
-        (room) => room.id == id,
-        orElse: () => throw Exception('Room not found'),
-      );
-    } catch (e) {
-      return null;
-    }
-  }
+  RoomRepositoryImpl({this.apiClient});
 
   @override
   Future<bool> addRoom(RoomModel room) async {
     try {
       final prefs = await SharedPreferences.getInstance();
       final rooms = await getAllRooms();
+      final newList = List<RoomModel>.from(rooms)..add(room);
+      await prefs.setString(_cacheKey, jsonEncode(newList.map((r) => r.toJson()).toList()));
 
-      rooms.add(room);
-
-      final roomsJson = rooms.map((r) => r.toJson()).toList();
-      await prefs.setString(_roomsKey, jsonEncode(roomsJson));
-
-      return true;
-    } catch (e) {
-      return false;
-    }
-  }
-
-  @override
-  Future<bool> updateRoom(RoomModel room) async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final rooms = await getAllRooms();
-
-      final index = rooms.indexWhere((r) => r.id == room.id);
-
-      if (index == -1) {
-        return false;
+      if (apiClient != null) {
+        await apiClient!.post('/rooms', data: room.toJson());
       }
 
-      rooms[index] = room;
-
-      final roomsJson = rooms.map((r) => r.toJson()).toList();
-      await prefs.setString(_roomsKey, jsonEncode(roomsJson));
-
       return true;
-    } catch (e) {
+    } catch (_) {
       return false;
     }
   }
@@ -83,42 +35,98 @@ class RoomRepositoryImpl implements RoomRepository {
     try {
       final prefs = await SharedPreferences.getInstance();
       final rooms = await getAllRooms();
+      final newList = rooms.where((r) => r.id != id).toList();
+      await prefs.setString(_cacheKey, jsonEncode(newList.map((r) => r.toJson()).toList()));
 
-      rooms.removeWhere((r) => r.id == id);
-
-      final roomsJson = rooms.map((r) => r.toJson()).toList();
-      await prefs.setString(_roomsKey, jsonEncode(roomsJson));
+      if (apiClient != null) {
+        await apiClient!.post('/rooms/delete', data: {'id': id});
+      }
 
       return true;
-    } catch (e) {
+    } catch (_) {
       return false;
+    }
+  }
+
+  @override
+  Future<RoomModel?> getRoomById(String id) async {
+    final rooms = await getAllRooms();
+    try {
+      return rooms.firstWhere((r) => r.id == id);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  @override
+  Future<List<RoomModel>> getAllRooms() async {
+    try {
+      if (apiClient != null) {
+        final resp = await apiClient!.get('/rooms');
+        if (resp.statusCode == 200 && resp.data != null) {
+          final data = resp.data is List ? resp.data : (resp.data['rooms'] ?? resp.data['data'] ?? []);
+          final list = List<Map<String, dynamic>>.from(data as List);
+          final rooms = list.map((j) => RoomModel.fromJson(j)).toList();
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.setString(_cacheKey, jsonEncode(rooms.map((r) => r.toJson()).toList()));
+          return rooms;
+        }
+      }
+    } catch (_) {
+      // ignore and fallback to cache
+    }
+
+    // fallback to cache
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final cached = prefs.getString(_cacheKey);
+      if (cached == null) return [];
+      final list = List<Map<String, dynamic>>.from(jsonDecode(cached) as List);
+      return list.map((j) => RoomModel.fromJson(j)).toList();
+    } catch (_) {
+      return [];
     }
   }
 
   @override
   Future<bool> toggleRoomState(String id) async {
     try {
-      final room = await getRoomById(id);
+      final rooms = await getAllRooms();
+      final idx = rooms.indexWhere((r) => r.id == id);
+      if (idx == -1) return false;
+      final updated = rooms[idx].copyWith(isOn: !rooms[idx].isOn);
+      rooms[idx] = updated;
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_cacheKey, jsonEncode(rooms.map((r) => r.toJson()).toList()));
 
-      if (room == null) {
-        return false;
+      if (apiClient != null) {
+        await apiClient!.post('/rooms/toggle', data: {'id': id});
       }
 
-      final updatedRoom = room.copyWith(isOn: !room.isOn);
-      return await updateRoom(updatedRoom);
-    } catch (e) {
+      return true;
+    } catch (_) {
       return false;
     }
   }
 
-  List<RoomModel> _getDefaultRooms() {
-    return [
-      const RoomModel(id: '1', name: 'Living Room', lightsCount: 4, isOn: true),
-      const RoomModel(id: '2', name: 'Bedroom', lightsCount: 2, isOn: false),
-      const RoomModel(id: '3', name: 'Kitchen', lightsCount: 3, isOn: true),
-      const RoomModel(id: '4', name: 'Bathroom', lightsCount: 2, isOn: false),
-      const RoomModel(id: '5', name: 'Office', lightsCount: 3, isOn: false),
-      const RoomModel(id: '6', name: 'Garage', lightsCount: 1, isOn: false),
-    ];
+  @override
+  Future<bool> updateRoom(RoomModel room) async {
+    try {
+      final rooms = await getAllRooms();
+      final idx = rooms.indexWhere((r) => r.id == room.id);
+      if (idx == -1) return false;
+      rooms[idx] = room;
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_cacheKey, jsonEncode(rooms.map((r) => r.toJson()).toList()));
+
+      if (apiClient != null) {
+        await apiClient!.post('/rooms/update', data: room.toJson());
+      }
+
+      return true;
+    } catch (_) {
+      return false;
+    }
   }
 }
+

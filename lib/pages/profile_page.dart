@@ -7,6 +7,7 @@ import '../data/models/user_model.dart';
 import '../core/validators/input_validator.dart';
 import '../data/repositories/room_repository_impl.dart';
 import '../data/models/room_model.dart';
+import '../widgets/info_card.dart';
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
@@ -208,49 +209,19 @@ class _ProfilePageState extends State<ProfilePage> {
                     style: TextStyle(fontSize: 16, color: Colors.grey.shade600),
                   ),
                   const SizedBox(height: 40),
-                  _buildInfoCard(
-                    context,
-                    'Account Information',
-                    Icons.account_circle,
-                    [
-                      _buildStatRow('Full Name', _currentUser!.fullName),
-                      _buildStatRow('Email', _currentUser!.email),
-                      _buildStatRow('User ID', _currentUser!.id),
+                  InfoCard(
+                    title: 'Account Information',
+                    icon: Icons.account_circle,
+                    children: [
+                      StatRow('Full Name', _currentUser!.fullName),
+                      StatRow('Email', _currentUser!.email),
+                      StatRow('User ID', _currentUser!.id),
                     ],
                   ),
                   const SizedBox(height: 16),
-                  _buildInfoCard(
-                    context,
-                    'Usage Statistics',
-                    Icons.bar_chart,
-                    [
-                      FutureBuilder<List<RoomModel>>(
-                        future: _roomsFuture,
-                        builder: (context, snapshot) {
-                          if (snapshot.connectionState == ConnectionState.waiting) {
-                            return const Center(child: SizedBox(height: 24, width: 24, child: CircularProgressIndicator(strokeWidth: 2)));
-                          }
-
-                          if (snapshot.hasError) {
-                            return _buildStatRow('Data', 'Offline');
-                          }
-
-                          final rooms = snapshot.data ?? [];
-                          final totalLights = rooms.fold<int>(0, (s, r) => s + r.lightsCount);
-                          final activeRooms = rooms.where((r) => r.isOn).length;
-                          final energySaved = rooms.isEmpty ? '—' : '${(rooms.where((r) => !r.isOn).length * 5) % 100}%';
-
-                          return Column(
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: [
-                              _buildStatRow('Total Lights', totalLights.toString()),
-                              _buildStatRow('Active Rooms', activeRooms.toString()),
-                              _buildStatRow('Energy Saved', energySaved),
-                            ],
-                          );
-                        },
-                      ),
-                    ],
+                  InfoCard(
+                    title: 'Usage Statistics',
+                    icon: Icons.bar_chart,
                     headerAction: IconButton(
                       tooltip: 'Refresh statistics',
                       icon: const Icon(Icons.refresh),
@@ -273,6 +244,34 @@ class _ProfilePageState extends State<ProfilePage> {
                         }
                       },
                     ),
+                    children: [
+                      FutureBuilder<List<RoomModel>>(
+                        future: _roomsFuture,
+                        builder: (context, snapshot) {
+                          if (snapshot.connectionState == ConnectionState.waiting) {
+                            return const Center(child: SizedBox(height: 24, width: 24, child: CircularProgressIndicator(strokeWidth: 2)));
+                          }
+
+                          if (snapshot.hasError) {
+                            return const StatRow('Data', 'Offline');
+                          }
+
+                          final rooms = snapshot.data ?? [];
+                          final totalLights = rooms.fold<int>(0, (s, r) => s + r.lightsCount);
+                          final activeRooms = rooms.where((r) => r.isOn).length;
+                          final energySaved = rooms.isEmpty ? '—' : '${(rooms.where((r) => !r.isOn).length * 5) % 100}%';
+
+                          return Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              StatRow('Total Lights', totalLights.toString()),
+                              StatRow('Active Rooms', activeRooms.toString()),
+                              StatRow('Energy Saved', energySaved),
+                            ],
+                          );
+                        },
+                      ),
+                    ],
                   ),
                   const SizedBox(height: 40),
                   CustomButton(
@@ -291,72 +290,5 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
-  Widget _buildInfoCard(
-    BuildContext context,
-    String title,
-    IconData icon,
-    List<Widget> children, {
-    Widget? headerAction,
-  }) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-          boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(icon, color: Theme.of(context).colorScheme.primary),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Text(
-                  title,
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-              if (headerAction != null) headerAction,
-            ],
-          ),
-          const SizedBox(height: 16),
-          ...children,
-        ],
-      ),
-    );
-  }
-
-  Widget _buildStatRow(String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(
-            label,
-            style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
-          ),
-          Flexible(
-            child: Text(
-              value,
-              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+  // Moved InfoCard and StatRow widgets to lib/widgets/info_card.dart
 }

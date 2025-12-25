@@ -67,16 +67,24 @@ class StatsCard extends StatelessWidget {
               color: Colors.white.withValues(alpha: 0.3),
               borderRadius: BorderRadius.circular(4),
             ),
-            child: FractionallySizedBox(
-              alignment: Alignment.centerLeft,
-              widthFactor: activeLights / totalLights,
-              child: Container(
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(4),
+            child: Builder(builder: (context) {
+              double ratio = 0.0;
+              if (totalLights > 0) {
+                ratio = activeLights / totalLights;
+                if (!ratio.isFinite) ratio = 0.0;
+                ratio = ratio.clamp(0.0, 1.0);
+              }
+              return FractionallySizedBox(
+                alignment: Alignment.centerLeft,
+                widthFactor: ratio,
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(4),
+                  ),
                 ),
-              ),
-            ),
+              );
+            }),
           ),
         ],
       ),

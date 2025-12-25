@@ -17,7 +17,6 @@ class UserRepositoryImpl implements UserRepository {
           ? List<Map<String, dynamic>>.from(jsonDecode(usersJson) as List)
           : [];
 
-      // Check if email already exists
       final emailExists = usersList.any((u) => u['email'] == user.email);
 
       if (emailExists) {

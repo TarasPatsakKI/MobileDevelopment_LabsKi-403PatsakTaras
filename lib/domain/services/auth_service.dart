@@ -54,7 +54,6 @@ class AuthService {
         return AuthResult(success: false, message: 'Invalid email or password');
       }
 
-      // Try to obtain token from remote API if apiClient provided
       if (apiClient != null) {
         try {
           final resp = await apiClient!.post('/auth/login', data: {
@@ -70,7 +69,6 @@ class AuthService {
             }
           }
         } catch (_) {
-          // ignore api token errors, local login still works
         }
       }
 

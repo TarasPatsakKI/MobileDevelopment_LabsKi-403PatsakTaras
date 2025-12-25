@@ -73,10 +73,8 @@ class RoomRepositoryImpl implements RoomRepository {
         }
       }
     } catch (_) {
-      // ignore and fallback to cache
     }
 
-    // fallback to cache
     try {
       final prefs = await SharedPreferences.getInstance();
       final cached = prefs.getString(_cacheKey);

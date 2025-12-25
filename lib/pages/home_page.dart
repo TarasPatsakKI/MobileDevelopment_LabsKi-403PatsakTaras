@@ -272,7 +272,7 @@ class _HomePageState extends State<HomePage> {
         builder: (context, connectivity, child) {
           return Column(
             children: [
-              // Offline banner
+              
               if (!connectivity.isConnected)
                 Container(
                   width: double.infinity,
